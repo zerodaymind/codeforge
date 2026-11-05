@@ -1,0 +1,11 @@
+FROM node:20-alpine
+
+RUN apk add --no-cache \
+    python3 \
+    build-base \
+    openjdk17-jdk
+
+WORKDIR /workspace
+USER node
+
+CMD ["sh"]

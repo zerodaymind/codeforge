@@ -1,0 +1,110 @@
+version: '3.8'
+
+# ==============================================================================
+# CodeForge Production-Like Orchestration (REM-P0-02 Microsegmented Topology)
+#
+# Deliberate 3-Tier Network Isolation:
+# 1. frontend-net: Connects public Reverse Proxy (Nginx) and Web API (Backend).
+# 2. data-net:     Strictly internal bridge (internal: true) connecting Backend and MongoDB.
+# 3. runner-net:   Strictly internal bridge (internal: true) connecting Backend and Runner.
+#                  Outbound WAN access disabled. Frontend & DB cannot reach runner.
+#
+# Runner Host-Isolation Note (REM-P0-02):
+# - Untrusted code runs in ephemeral containers using memory stdin transport (no host mounts).
+# - For public multi-tenant production, runner must be deployed on an isolated worker VM
+#   or sandboxed runtime (Firecracker microVM or gVisor runsc) without raw host Docker socket sharing.
+# ==============================================================================
+
+services:
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: codeforge-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: codeforge
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - data-net
+    # MongoDB is unexposed to external networks and isolated from runner/frontend
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codeforge-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: mongodb://mongodb:27017/codeforge
+      JWT_SECRET: ${JWT_SECRET:-replace_with_a_secure_random_64_char_secret_for_production}
+      CORS_ORIGIN: http://localhost,http://localhost:80
+      REQUEST_BODY_LIMIT: 100kb
+      MAX_CONCURRENT_EXECUTIONS: 5
+      RUNNER_SERVICE_URL: http://runner:5050
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?RUNNER_SHARED_SECRET must be configured in environment}
+    depends_on:
+      - mongodb
+      - runner
+    networks:
+      - frontend-net
+      - data-net
+      - runner-net
+    ports:
+      - "5000:5000"
+
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    container_name: codeforge-runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5050
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?RUNNER_SHARED_SECRET must be configured in environment}
+      MAX_CONCURRENT_RUNS: 5
+      CONTAINER_RUNTIME: ${CONTAINER_RUNTIME:-}
+    volumes:
+      # Isolated execution runner daemon manages sandbox container lifecycle
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - runner-net
+    # Strictly internal: NO published host ports.
+    # Outbound WAN disabled via runner-net internal: true.
+    # Frontend and MongoDB have ZERO network route to runner.
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: codeforge-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - frontend-net
+    ports:
+      - "80:80"
+
+networks:
+  # Public ingress tier network
+  frontend-net:
+    driver: bridge
+
+  # Storage tier: internal only, no internet access, unreachable by frontend/runner
+  data-net:
+    driver: bridge
+    internal: true
+
+  # Execution tier: internal only, no internet access, unreachable by frontend/mongodb
+  runner-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  mongo-data:
+    driver: local

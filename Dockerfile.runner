@@ -1,0 +1,30 @@
+# Multi-stage production Dockerfile for CodeForge Dedicated Runner Service
+FROM node:20-alpine AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=5050
+
+# Install Docker CLI so the dedicated runner daemon can invoke the container engine
+RUN apk add --no-cache docker-cli && \
+    (addgroup -S docker 2>/dev/null || true) && \
+    (addgroup node docker 2>/dev/null || true)
+
+# Run as non-privileged node user
+USER node
+
+COPY --chown=node:node package.json ./
+COPY --chown=node:node --from=dependencies /app/node_modules ./node_modules
+COPY --chown=node:node server/runner ./server/runner
+
+# Internal container port (never published to public host interfaces)
+EXPOSE 5050
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5050/health || exit 1
+
+CMD ["node", "server/runner/runnerServer.js"]

@@ -1,0 +1,46 @@
+# ==============================================================================
+# CodeForge Production Execution Tier (Dedicated Runner Host / VM)
+#
+# Production Multi-Host Architecture (REM-P0-03):
+# - Deployed exclusively on a Dedicated, Disposable Execution VM.
+# - Separated by VPC / firewall boundary from the Application Host and Database Host.
+# - Zero network routes to MongoDB or Frontend tiers.
+# - Cloud metadata service (169.254.169.254) blocked at host firewall level.
+# - Ephemeral student containers execute with gVisor runsc user-space microkernel.
+# ==============================================================================
+
+services:
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    container_name: codeforge-prod-runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5050
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?RUNNER_SHARED_SECRET must be configured in environment}
+      RUNNER_PREVIOUS_SECRET: ${RUNNER_PREVIOUS_SECRET:-}
+      MAX_CONCURRENT_RUNS: 5
+      CONTAINER_RUNTIME: ${CONTAINER_RUNTIME:-runsc}
+      RUNNER_TLS_CERT: ${RUNNER_TLS_CERT:-}
+      RUNNER_TLS_KEY: ${RUNNER_TLS_KEY:-}
+      RUNNER_TLS_CA: ${RUNNER_TLS_CA:-}
+      REQUIRE_SHARED_NONCE_STORE: ${REQUIRE_SHARED_NONCE_STORE:-true}
+    volumes:
+      # Execution host daemon socket for ephemeral container orchestration
+      # Blast radius is strictly confined to this dedicated, disposable worker VM.
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - runner-mgmt-net
+    ports:
+      # Bound strictly to the private VPC subnet IP (e.g. 10.0.10.x).
+      # Never published to 0.0.0.0 or public internet.
+      - "127.0.0.1:5050:5050"
+    # Security options: runs as non-privileged node user with capability drops
+    user: "1000:1000"
+
+networks:
+  runner-mgmt-net:
+    driver: bridge
+    internal: false # Requires routing within private VPC to accept backend requests

@@ -1,0 +1,75 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Backups and Database Dumps
+backups/
+server/backups/
+*.dump
+*.archive
+
+# Editor and OS directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# College Academic Reports and Examination Artifacts
+project-report/
+
+# Temporary Database Maintenance, Provenance, and Cleanup Scripts
+# (Preserves reusable scripts: backupDatabase.mjs, restoreDatabase.mjs, provisionAdmin.mjs, seedProblems.mjs)
+server/scripts/auditSingleUserCleanup.mjs
+server/scripts/checkRealUserActivity.mjs
+server/scripts/dataHygieneAudit.mjs
+server/scripts/executeSingleUserCleanup.mjs
+server/scripts/generateDeletionManifest.mjs
+server/scripts/generateRevisedManifest.mjs
+server/scripts/generateSingleUserCleanupManifest.mjs
+server/scripts/inspectAssistantConversations.mjs
+server/scripts/inspectAuditLogsDetailed.mjs
+server/scripts/inspectFacultyConvs.mjs
+server/scripts/investigateOrphan.mjs
+server/scripts/investigateOrphanDetails.mjs
+server/scripts/provenanceAudit.mjs
+server/scripts/recheckLiveDatabaseState.mjs
+server/scripts/safeCleanup.mjs
+
+# Screenshots containing personal email addresses, private credentials, or institutional emblems
+screenshots/Screenshot 2026-10-30 192202.png
+screenshots/Screenshot 2026-10-30 193452.png
+screenshots/Screenshot 2026-10-30 193516.png
+screenshots/Screenshot 2026-10-31 072801.png
+screenshots/Screenshot 2026-10-31 194238.png
+screenshots/Screenshot 2026-10-31 194350.png
+screenshots/Screenshot 2026-10-31 194450.png
+screenshots/VIT LOGO.png
+
+# Faculty demonstration runbooks, rehearsal checklists, and internal milestone staging reports
+docs/CODEFORGE_FACULTY_DEMO_RUNBOOK.md
+docs/CODEFORGE_FINAL_REHEARSAL_CHECKLIST.md
+docs/CODEFORGE_PRESENTATION_OUTLINE.md
+docs/REM-P0-05-live-verification-report.md
+docs/REM-P0-06-live-staging-verification.md
+docs/REM-P0-08-live-staging-verification.md

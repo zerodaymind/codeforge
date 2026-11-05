@@ -1,0 +1,76 @@
+# ==============================================================================
+# CodeForge Production Application Tier (Web & Database Host)
+#
+# Production Multi-Host Architecture (REM-P0-03):
+# - Deployed exclusively on the Application / Web Host.
+# - ZERO host Docker engine socket mount.
+# - ZERO docker-cli or container engine tools installed.
+# - Code execution requests are dispatched over private mTLS/VPC to the
+#   Dedicated Execution Host (see execution tier compose manifest).
+# ==============================================================================
+
+services:
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: codeforge-prod-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: codeforge
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - data-net
+    # Strictly internal: NO published host ports. Unreachable by public internet.
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codeforge-prod-backend
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: ${MONGO_URI:-mongodb://mongodb:27017/codeforge}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be configured in environment}
+      RUNNER_SERVICE_URL: ${RUNNER_SERVICE_URL:?RUNNER_SERVICE_URL must point to dedicated execution host}
+      RUNNER_SHARED_SECRET: ${RUNNER_SHARED_SECRET:?RUNNER_SHARED_SECRET must be configured in environment}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://codeforge.dev}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      MAX_CONCURRENT_EXECUTIONS: 5
+    networks:
+      - frontend-net
+      - data-net
+    # Public backend container has ZERO Docker socket access and runs as non-root node user
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: codeforge-prod-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - frontend-net
+    ports:
+      - "80:80"
+      - "443:443"
+
+networks:
+  # Public ingress network
+  frontend-net:
+    driver: bridge
+
+  # Storage tier: internal only, no internet access, unreachable by external networks
+  data-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  mongo-data:
+    driver: local
