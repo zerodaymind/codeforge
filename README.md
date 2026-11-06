@@ -313,14 +313,9 @@ CodeForge/
 
 ---
 
-## Author & Academic Attribution
+## Author
 
-Developed by **Prajwal BM** ([@zerodaymind](https://github.com/zerodaymind)) as a Capstone Project at **Vellore Institute of Technology (VIT)**, Vellore, Tamil Nadu, India.
-
-### Faculty Guide
-- **Prof. KAVITHA B**
-- School of Computer Science Engineering and Information Systems (SCORE)
-- Vellore Institute of Technology (VIT), Vellore
+Developed by **Prajwal BM** ([@zerodaymind](https://github.com/zerodaymind)).
 
 ---
 
